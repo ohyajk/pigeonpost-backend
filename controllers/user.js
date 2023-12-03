@@ -27,7 +27,9 @@ export const createUser = (req, res) => {
 // GET ALL USERS
 
 export const getUsers = (req, res) => {
-    User.find()
+    const userQuery = req.query.userQuery
+    const regex = new RegExp(userQuery, "i")
+    User.find({ name: { $regex: regex } })
         .select({ otp: 0, hashPass: 0, isVerified: 0, isFilled: 0 })
         .then((data) => {
             res.status(200).json({
@@ -44,8 +46,8 @@ export const getUsers = (req, res) => {
 // GET CURRENT USER
 
 export const currentUser = (req, res) => {
-    const { email } = req.body
-    User.findOne({ email })
+    const { id } = req.params
+    User.findOne({ _id: id })
         .select({ otp: 0, hashPass: 0 })
         .then((data) => {
             res.status(200).json({
@@ -113,6 +115,60 @@ export const fillData = (req, res) => {
                         err,
                     })
                 })
+        })
+        .catch((err) => {
+            res.status(500).json({
+                err,
+            })
+        })
+}
+
+// Follow
+
+export const follow = (req, res) => {
+    const { myId, userId } = req.body
+    User.findById(userId).then((data) => {
+        data.followers.push(myId)
+        data.save()
+    })
+    User.findById(myId)
+        .then((data) => {
+            data.following.push(userId)
+            data.save()
+                .then(() => {
+                    res.status(200).json({
+                        message: "Success",
+                    })
+                })
+                .catch((err) => {
+                    res.status(500).json({
+                        err,
+                    })
+                })
+        })
+        .catch((err) => {
+            res.status(500).json({
+                err,
+            })
+        })
+}
+
+// Unfollow
+
+export const unfollow = (req, res) => {
+    const { myId, userId } = req.body
+
+    // Update the user being unfollowed
+    const unfollowedUserPromise = User.findByIdAndUpdate(userId, { $pull: { followers: myId } }, { new: true })
+
+    // Update the current user (myId) to remove the followed user
+    const currentUserPromise = User.findByIdAndUpdate(myId, { $pull: { following: userId } }, { new: true })
+
+    Promise.all([unfollowedUserPromise, currentUserPromise])
+        .then(() => {
+            res.status(200).json({
+                message: "Success",
+            })
         })
         .catch((err) => {
             res.status(500).json({

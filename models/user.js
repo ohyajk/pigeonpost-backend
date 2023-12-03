@@ -34,11 +34,6 @@ const userSchema = new Schema(
             default: [],
             ref: "User",
         },
-        posts: {
-            type: Array,
-            default: [],
-            ref: "Post",
-        },
         isVerified: {
             type: Boolean,
             default: false,
